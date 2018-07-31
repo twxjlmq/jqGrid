@@ -41,7 +41,7 @@ $.extend($.jgrid,{
 		if(tmp && $t.p.filterToolbar) {
 			$($t).jqGrid('setGridParam',{_fT: tmp});
 		}
-		gridstate  =  $($t).jqGrid('jqGridExport', { exptype : "jsonstring", ident:"", root:"" });
+		gridstate  =  $($t).jqGrid('jqGridExport', { exptype : "jsonstring", ident:"", root:"", data : o.saveData });
 		data = '';
 		if( o.saveData ) {
 			data = $($t.grid.bDiv).find(".ui-jqgrid-btable tbody:first").html();
@@ -72,10 +72,10 @@ $.extend($.jgrid,{
 			$("#link_save").attr("href",url).on('click',function(){
 				$(this).remove();
 			});
-		}		
+		}
 		if(o.compression) {
 			if(o.compressionModule) {
-				try { 
+				try {
 					ret = window[o.compressionModule][o.compressionMethod](gridstate);
 					if(ret != null) {
 						gridstate = ret;
@@ -137,8 +137,8 @@ $.extend($.jgrid,{
 		}
 		ret = $.jgrid.parseFunc( gridstring );
 		if( ret && $.type(ret) === 'object') {
-			if($t.grid) { 
-				$.jgrid.gridUnload( jqGridId ); 
+			if($t.grid) {
+				$.jgrid.gridUnload( jqGridId );
 			}
 			if($.isFunction(o.beforeSetGrid)) {
 				tmp = o.beforeSetGrid( ret );
@@ -165,11 +165,11 @@ $.extend($.jgrid,{
 
 			if(ret.inlineNav) {
 				iN = retfunc( ret._iN );
-				ret._iN = null; delete ret._iN; 
+				ret._iN = null; delete ret._iN;
 			}
 			if(ret.filterToolbar) {
 				fT = retfunc( ret._fT );
-				ret._fT = null; delete ret._fT; 
+				ret._fT = null; delete ret._fT;
 			}
 			var grid = $("#"+jqGridId).jqGrid( ret );
 			if( o.restoreData && $.trim( data ) !== '') {
@@ -190,13 +190,22 @@ $.extend($.jgrid,{
 					}
 				}
 			}
-			// refresh index 
+			// refresh index
 			grid[0].refreshIndex();
 			// subgrid
 			if(ret.subGrid) {
 				var ms = ret.multiselect === 1 ? 1 : 0,
 					rn = ret.rownumbers === true ? 1 :0;
 				grid.jqGrid('addSubGrid', ms + rn);
+				// reopen the sugrid in order to maintain the subgrid state.
+				// currently only one level is supported
+				// todo : supposrt for unlimited  levels
+				$.each(grid[0].rows, function(i, srow){
+					if( $(srow).hasClass('ui-sg-expanded') ) {
+						// reopen the subgrid
+						$(grid[0].rows[i-1]).find('td.sgexpanded').click().click();
+					}
+				});
 			}
 			// treegrid
 			if(ret.treeGrid) {
@@ -269,7 +278,7 @@ $.extend($.jgrid,{
 				grid.jqGrid('setFrozenColumns');
 			}
 			grid[0].updatepager(true, true);
-			
+
 			if($.isFunction(o.afterSetGrid)) {
 				o.afterSetGrid( grid );
 			}
@@ -301,19 +310,19 @@ $.extend($.jgrid,{
 			storageType: "sessionStorage"
 		};
 		o =  $.extend(o , options || {});
-		
+
 		if( !o.regional ) {
 			return;
 		}
-		
+
 		$.jgrid.saveState( jqGridId, o );
-		
+
 		o.beforeSetGrid = function(params) {
 			params.regional = o.regional;
 			params.force_regional = true;
 			return params;
 		};
-		
+
 		$.jgrid.loadState( jqGridId, null, o);
 		// check for formatter actions
 		var grid = $("#"+jqGridId)[0],
@@ -463,7 +472,8 @@ $.extend($.jgrid,{
 				exptype : "xmlstring",
 				root: "grid",
 				ident: "\t",
-				addOptions : {}
+				addOptions : {},
+				data : true
 			}, o || {});
 			var ret = null;
 			this.each(function () {
@@ -484,6 +494,10 @@ $.extend($.jgrid,{
 					gprm.colModel.splice(0,1);
 				}
 				gprm.knv = null;
+				if(!o.data) {
+					gprm.data = [];
+					gprm._index = {};
+				}
 				switch (o.exptype) {
 					case 'xmlstring' :
 						ret = "<"+o.root+">"+ $.jgrid.jsonToXML( gprm, {xmlDecl:""} )+"</"+o.root+">";
